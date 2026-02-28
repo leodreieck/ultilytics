@@ -498,11 +498,12 @@ function renderStats(gameId) {
   // aggregate per player
   const agg = {};
   logs.forEach(r => {
-    if (!agg[r.playerId]) agg[r.playerId] = { name: r.playerName, points: 0, pulls: 0, defenses: 0, turnovers: 0, drops: 0, assists: 0, goals: 0 };
+    if (!agg[r.playerId]) agg[r.playerId] = { name: r.playerName, points: 0, games: 0, pulls: 0, defenses: 0, turnovers: 0, drops: 0, assists: 0, goals: 0 };
     const a = agg[r.playerId];
-    // count distinct points: group by score
     a._scores = a._scores || new Set();
-    a._scores.add(r.score);
+    a._scores.add(r.gameId + ':' + r.score);
+    a._games = a._games || new Set();
+    a._games.add(r.gameId);
     a.pulls += r.pull;
     a.defenses += r.defense;
     a.turnovers += r.turnover;
@@ -512,6 +513,7 @@ function renderStats(gameId) {
   });
   let rows = Object.values(agg).map(a => {
     a.points = a._scores ? a._scores.size : 0;
+    a.games = a._games ? a._games.size : 0;
     a.total = a.defenses - a.turnovers - a.drops + a.assists + a.goals;
     return a;
   });
@@ -522,14 +524,18 @@ function renderStats(gameId) {
     return statsSortDir * (va - vb);
   });
 
-  const cols = [
-    ['name','Player'],['points','Points'],['pulls','Pulls'],['defenses','Defenses'],['turnovers','Turnovers'],['drops','Drops'],['assists','Assists'],['goals','Goals'],['total','Total']
-  ];
+  const isOverall = !gameId;
+  const cols = [['name','Player']];
+  if (isOverall) cols.push(['games','Games']);
+  cols.push(['points','Points'],['pulls','Pulls'],['defenses','Defenses'],['turnovers','Turnovers'],['drops','Drops'],['assists','Assists'],['goals','Goals'],['total','Total']);
 
   let html = '<thead><tr>' + cols.map(([k,l]) => `<th onclick="sortStats('${k}')">${l}${statsSortCol===k?(statsSortDir===-1?' &#9660;':' &#9650;'):''}</th>`).join('') + '</tr></thead><tbody>';
-  if (!rows.length) { html += '<tr><td colspan="9" class="empty">No data yet</td></tr>'; }
+  if (!rows.length) { html += '<tr><td colspan="' + cols.length + '" class="empty">No data yet</td></tr>'; }
   rows.forEach(r => {
-    html += `<tr><td>${esc(r.name)}</td><td>${r.points}</td><td>${r.pulls}</td><td>${r.defenses}</td><td>${r.turnovers}</td><td>${r.drops}</td><td>${r.assists}</td><td>${r.goals}</td><td style="font-weight:600">${r.total}</td></tr>`;
+    let cells = `<td>${esc(r.name)}</td>`;
+    if (isOverall) cells += `<td>${r.games}</td>`;
+    cells += `<td>${r.points}</td><td>${r.pulls}</td><td>${r.defenses}</td><td>${r.turnovers}</td><td>${r.drops}</td><td>${r.assists}</td><td>${r.goals}</td><td style="font-weight:600">${r.total}</td>`;
+    html += `<tr>${cells}</tr>`;
   });
   html += '</tbody>';
   document.getElementById('stats-table').innerHTML = html;
