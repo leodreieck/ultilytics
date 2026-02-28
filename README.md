@@ -11,6 +11,10 @@ A lightweight, offline-first analytics tracker for ultimate frisbee teams — bu
 - **Statistics** — per-game and overall stats tables with sortable columns (Points Played, Pulls, Defenses, Turnovers, Drops, Assists, Goals, Total)
 - **CSV export / import** — export all data or a single game; reimport to restore a session
 
+## Live
+
+[leodreieck.de/ultilytics](https://leodreieck.de/ultilytics)
+
 ## Usage
 
 Just open `index.html` in any modern browser. All data is stored in the browser's `localStorage` — nothing is sent to a server.
