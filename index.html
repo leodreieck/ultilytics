@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultilytics</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --accent: #6c5ce7;
+    --accent2: #a29bfe;
+    --green: #00b894;
+    --red: #e17055;
+    --orange: #fdcb6e;
+    --text: #dfe6e9;
+    --text2: #636e72;
+    --border: #2d3142;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  button { cursor: pointer; font-family: inherit; border: none; border-radius: var(--radius); padding: 8px 16px; font-size: 14px; transition: opacity .15s; }
+  button:active { opacity: .7; }
+  input, select { font-family: inherit; font-size: 14px; padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface2); color: var(--text); outline: none; }
+  input:focus, select:focus { border-color: var(--accent); }
+
+  /* NAV */
+  nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 12px; position: sticky; top: 0; z-index: 10; }
+  nav button { background: none; color: var(--text2); padding: 12px 16px; border-radius: 0; font-weight: 500; border-bottom: 2px solid transparent; }
+  nav button.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  nav .logo { font-weight: 700; color: var(--accent2); padding: 12px 16px 12px 4px; font-size: 15px; margin-right: auto; letter-spacing: .5px; }
+
+  /* SCREENS */
+  .screen { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
+  .screen.active { display: block; }
+
+  h2 { font-size: 18px; margin-bottom: 16px; font-weight: 600; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; }
+
+  /* FORMS */
+  .form-row { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .form-row input, .form-row select { flex: 1; }
+  .btn-primary { background: var(--accent); color: #fff; font-weight: 600; }
+  .btn-green { background: var(--green); color: #fff; font-weight: 600; }
+  .btn-red { background: var(--red); color: #fff; font-weight: 600; }
+  .btn-small { padding: 4px 10px; font-size: 12px; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+
+  /* PLAYER LIST */
+  .player-item { display: flex; align-items: center; justify-content: space-between; }
+  .player-item .info { display: flex; align-items: center; gap: 8px; }
+  .player-item .gender { font-size: 11px; background: var(--surface2); padding: 2px 6px; border-radius: 4px; color: var(--text2); }
+  .toggle { width: 40px; height: 22px; border-radius: 11px; background: var(--surface2); position: relative; cursor: pointer; transition: background .2s; border: none; padding: 0; }
+  .toggle.on { background: var(--green); }
+  .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: left .2s; }
+  .toggle.on::after { left: 20px; }
+  .sort-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .sort-bar button { font-size: 12px; }
+
+  /* GAME LIST */
+  .game-item { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .game-item:hover { border-color: var(--accent); }
+  .game-date { font-size: 12px; color: var(--text2); }
+
+  /* SCORE BAR */
+  .score-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; text-align: center; margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 20px; }
+  .score-bar .score { font-size: 28px; font-weight: 700; }
+  .score-bar .dash { font-size: 20px; color: var(--text2); }
+  .score-bar .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* OFFENSE/DEFENSE SELECTOR */
+  .od-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+  .od-selector button { flex: 1; padding: 14px; font-size: 15px; font-weight: 600; border: 2px solid var(--border); background: var(--surface); color: var(--text2); }
+  .od-selector button.selected { border-color: var(--accent); color: var(--accent2); background: var(--surface2); }
+
+  /* PLAYER CARDS */
+  .lineup-zone { min-height: 56px; border: 2px dashed var(--border); border-radius: var(--radius); padding: 8px; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
+  .lineup-zone .placeholder { color: var(--text2); font-size: 13px; width: 100%; text-align: center; }
+  .player-cards { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .pcard { padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; user-select: none; transition: all .15s; border: none; }
+  .pcard.available { background: var(--surface2); color: var(--text); }
+  .pcard.selected { background: var(--accent); color: #fff; }
+  .pcard.greyed { background: var(--surface); color: var(--text2); opacity: .4; }
+
+  /* POINT TRACKING TABLE */
+  .point-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .point-table th { text-align: center; padding: 6px 2px; color: var(--text2); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+  .point-table th:first-child { text-align: left; }
+  .point-table td { text-align: center; padding: 6px 2px; border-top: 1px solid var(--border); }
+  .point-table td:first-child { text-align: left; font-weight: 500; }
+  .point-table .cnt-cell { display: flex; align-items: center; justify-content: center; gap: 2px; }
+  .point-table .cnt-btn { width: 22px; height: 22px; border-radius: 4px; font-size: 14px; display: flex; align-items: center; justify-content: center; background: var(--surface2); color: var(--text); border: none; padding: 0; line-height: 1; }
+  .point-table .cnt-val { min-width: 18px; text-align: center; }
+  .point-table .chk { width: 18px; height: 18px; accent-color: var(--accent); }
+  .goal-btn { background: var(--green); color: #fff; font-weight: 700; padding: 4px 10px; font-size: 12px; border: none; border-radius: 4px; }
+
+  /* STATS TABLE */
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .stats-table th { text-align: center; padding: 8px 4px; color: var(--text2); font-weight: 500; font-size: 11px; text-transform: uppercase; cursor: pointer; }
+  .stats-table th:first-child { text-align: left; }
+  .stats-table th:hover { color: var(--accent2); }
+  .stats-table td { text-align: center; padding: 8px 4px; border-top: 1px solid var(--border); }
+  .stats-table td:first-child { text-align: left; font-weight: 500; }
+
+  /* CSV BAR */
+  .csv-bar { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .back-btn { margin-bottom: 12px; }
+
+  /* misc */
+  .empty { color: var(--text2); font-size: 14px; text-align: center; padding: 24px 0; }
+  .mb { margin-bottom: 16px; }
+  .mt { margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">Ultilytics</span>
+  <button onclick="showScreen('team')" id="nav-team">Team</button>
+  <button onclick="showScreen('games')" id="nav-games">Games</button>
+</nav>
+
+<!-- TEAM SCREEN -->
+<div class="screen" id="screen-team">
+  <h2>Manage Team</h2>
+  <div class="form-row">
+    <input id="player-name" placeholder="Player name" />
+    <select id="player-gender"><option value="M">M</option><option value="F">F</option></select>
+    <button class="btn-primary" onclick="addPlayer()">Add</button>
+  </div>
+  <div class="sort-bar">
+    <span style="font-size:12px;color:var(--text2)">Sort:</span>
+    <button class="btn-outline btn-small" onclick="sortPlayers('name')">Name</button>
+    <button class="btn-outline btn-small" onclick="sortPlayers('active')">Status</button>
+  </div>
+  <div id="player-list"></div>
+  <div class="csv-bar">
+    <button class="btn-outline btn-small" onclick="exportCSV()">Export All Data (CSV)</button>
+    <button class="btn-outline btn-small" onclick="document.getElementById('csv-import').click()">Import CSV</button>
+    <input type="file" id="csv-import" accept=".csv" style="display:none" onchange="importCSV(event)" />
+  </div>
+</div>
+
+<!-- GAMES SCREEN -->
+<div class="screen" id="screen-games">
+  <h2>Games</h2>
+  <div class="form-row">
+    <input id="game-name" placeholder="Game name" />
+    <input id="game-date" type="date" />
+    <button class="btn-primary" onclick="addGame()">New</button>
+  </div>
+  <div id="game-list"></div>
+  <button class="btn-outline btn-small mt" onclick="showStats(null)" style="width:100%">Overall Stats (All Games)</button>
+</div>
+
+<!-- GAME: BEFORE POINT -->
+<div class="screen" id="screen-before-point">
+  <button class="btn-outline btn-small back-btn" onclick="leaveGame()">Back to games</button>
+  <div class="score-bar" id="bp-score"></div>
+  <div class="od-selector">
+    <button id="od-offense" onclick="setOD('O')">Offense</button>
+    <button id="od-defense" onclick="setOD('D')">Defense</button>
+  </div>
+  <div class="lineup-zone" id="lineup-zone"><span class="placeholder">Tap players below to add (max 7)</span></div>
+  <div class="player-cards" id="available-players"></div>
+  <button class="btn-primary" style="width:100%;padding:14px;font-size:15px;" onclick="startPoint()">Start Point</button>
+</div>
+
+<!-- GAME: DURING POINT -->
+<div class="screen" id="screen-during-point">
+  <div class="score-bar" id="dp-score"></div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <button class="btn-red" style="flex:1;padding:12px;font-size:14px;" onclick="otherTeamScored()">Other Team Scored</button>
+    <button class="btn-outline" style="padding:12px;font-size:14px;" onclick="editLineup()">Edit Lineup</button>
+  </div>
+  <table class="point-table" id="point-table"></table>
+</div>
+
+<!-- STATS SCREEN -->
+<div class="screen" id="screen-stats">
+  <button class="btn-outline btn-small back-btn" onclick="showScreen('games')">Back to games</button>
+  <h2 id="stats-title">Statistics</h2>
+  <table class="stats-table" id="stats-table"></table>
+  <div class="csv-bar" id="stats-csv-bar"></div>
+</div>
+
+<script>
+// ─── DATA ──────────────────────────────────────────────
+let state = loadState();
+
+function defaultState() {
+  return { players: [], games: [], pointLog: [] };
+}
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem('ultilytics'));
+    if (s && s.players) return s;
+  } catch {}
+  return defaultState();
+}
+
+function save() { localStorage.setItem('ultilytics', JSON.stringify(state)); }
+
+// ─── NAV ───────────────────────────────────────────────
+let currentScreen = 'team';
+let currentGameId = null;
+let currentOD = 'O';
+let lineupPlayerIds = [];
+let pointStats = {}; // { playerId: { pull, defense, turnover, drop, assist, goal } }
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  const nb = document.getElementById('nav-' + id);
+  if (nb) nb.classList.add('active');
+  currentScreen = id;
+  if (id === 'team') renderPlayers();
+  if (id === 'games') renderGames();
+}
+
+// ─── TEAM ──────────────────────────────────────────────
+let playerSort = 'name';
+
+function addPlayer() {
+  const nameEl = document.getElementById('player-name');
+  const name = nameEl.value.trim();
+  if (!name) return;
+  const gender = document.getElementById('player-gender').value;
+  state.players.push({ id: uid(), name, gender, active: true });
+  nameEl.value = '';
+  save(); renderPlayers();
+}
+
+function toggleActive(id) {
+  const p = state.players.find(p => p.id === id);
+  if (p) p.active = !p.active;
+  save(); renderPlayers();
+}
+
+function sortPlayers(by) { playerSort = by; renderPlayers(); }
+
+function renderPlayers() {
+  const list = document.getElementById('player-list');
+  let sorted = [...state.players];
+  if (playerSort === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name));
+  else sorted.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0) || a.name.localeCompare(b.name));
+  if (!sorted.length) { list.innerHTML = '<div class="empty">No players yet</div>'; return; }
+  list.innerHTML = sorted.map(p => `
+    <div class="card player-item">
+      <div class="info">
+        <span>${esc(p.name)}</span>
+        <span class="gender">${p.gender}</span>
+      </div>
+      <button class="toggle ${p.active ? 'on' : ''}" onclick="toggleActive('${p.id}')"></button>
+    </div>`).join('');
+}
+
+// ─── GAMES ─────────────────────────────────────────────
+function addGame() {
+  const nameEl = document.getElementById('game-name');
+  const dateEl = document.getElementById('game-date');
+  const name = nameEl.value.trim();
+  if (!name) return;
+  const date = dateEl.value || new Date().toISOString().slice(0, 10);
+  state.games.push({ id: uid(), name, date, us: 0, them: 0 });
+  nameEl.value = ''; dateEl.value = '';
+  save(); renderGames();
+}
+
+function renderGames() {
+  const list = document.getElementById('game-list');
+  if (!state.games.length) { list.innerHTML = '<div class="empty">No games yet</div>'; return; }
+  list.innerHTML = state.games.slice().reverse().map(g => `
+    <div class="card game-item" onclick="enterGame('${g.id}')">
+      <div>
+        <div>${esc(g.name)}</div>
+        <div class="game-date">${g.date}</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <span style="font-weight:600">${g.us} - ${g.them}</span>
+        <button class="btn-outline btn-small" onclick="event.stopPropagation();showStats('${g.id}')">Stats</button>
+      </div>
+    </div>`).join('');
+}
+
+// ─── ENTER / LEAVE GAME ────────────────────────────────
+function enterGame(id) {
+  currentGameId = id;
+  lineupPlayerIds = [];
+  const g = state.games.find(g => g.id === id);
+  // preselect O/D based on last scorer
+  const gameLogs = state.pointLog.filter(r => r.gameId === id);
+  if (gameLogs.length === 0) { currentOD = 'O'; }
+  else {
+    const lastLog = gameLogs[gameLogs.length - 1];
+    currentOD = lastLog.weScored ? 'D' : 'O';
+  }
+  showBeforePoint();
+}
+
+function leaveGame() { currentGameId = null; showScreen('games'); }
+
+function showBeforePoint() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-before-point').classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  renderScoreBar('bp-score');
+  document.getElementById('od-offense').className = currentOD === 'O' ? 'selected' : '';
+  document.getElementById('od-defense').className = currentOD === 'D' ? 'selected' : '';
+  renderLineup();
+}
+
+function setOD(v) {
+  currentOD = v;
+  document.getElementById('od-offense').className = v === 'O' ? 'selected' : '';
+  document.getElementById('od-defense').className = v === 'D' ? 'selected' : '';
+}
+
+function renderScoreBar(elId) {
+  const g = state.games.find(g => g.id === currentGameId);
+  document.getElementById(elId).innerHTML = `
+    <div><div class="label">Us</div><div class="score">${g.us}</div></div>
+    <div class="dash">:</div>
+    <div><div class="label">Them</div><div class="score">${g.them}</div></div>`;
+}
+
+function renderLineup() {
+  const zone = document.getElementById('lineup-zone');
+  const pool = document.getElementById('available-players');
+  const active = state.players.filter(p => p.active).sort((a, b) => a.name.localeCompare(b.name));
+  const sortedLineup = [...lineupPlayerIds].sort((a, b) => {
+    const pa = state.players.find(p => p.id === a);
+    const pb = state.players.find(p => p.id === b);
+    return pa.name.localeCompare(pb.name);
+  });
+
+  if (lineupPlayerIds.length === 0) {
+    zone.innerHTML = '<span class="placeholder">Tap players below to add (max 7)</span>';
+  } else {
+    zone.innerHTML = sortedLineup.map(id => {
+      const p = state.players.find(p => p.id === id);
+      return `<button class="pcard selected" onclick="removeFromLineup('${id}')">${esc(p.name)}</button>`;
+    }).join('');
+  }
+
+  pool.innerHTML = active.map(p => {
+    const inLineup = lineupPlayerIds.includes(p.id);
+    return `<button class="pcard ${inLineup ? 'greyed' : 'available'}" onclick="${inLineup ? '' : "addToLineup('" + p.id + "')"}">${esc(p.name)}</button>`;
+  }).join('');
+}
+
+function addToLineup(id) {
+  if (lineupPlayerIds.length >= 7 || lineupPlayerIds.includes(id)) return;
+  lineupPlayerIds.push(id);
+  renderLineup();
+}
+
+function removeFromLineup(id) {
+  lineupPlayerIds = lineupPlayerIds.filter(x => x !== id);
+  renderLineup();
+}
+
+// ─── DURING POINT ──────────────────────────────────────
+function startPoint() {
+  if (lineupPlayerIds.length === 0) return;
+  const oldStats = pointStats;
+  pointStats = {};
+  lineupPlayerIds.forEach(id => {
+    pointStats[id] = oldStats[id] || { pull: false, defense: 0, turnover: 0, drop: 0, assist: false, goal: false };
+  });
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-during-point').classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  renderScoreBar('dp-score');
+  renderPointTable();
+}
+
+function renderPointTable() {
+  const table = document.getElementById('point-table');
+  const sortedIds = [...lineupPlayerIds].sort((a, b) => {
+    const pa = state.players.find(p => p.id === a);
+    const pb = state.players.find(p => p.id === b);
+    return pa.name.localeCompare(pb.name);
+  });
+  let html = `<thead><tr><th>Player</th><th>Pull</th><th>Defense</th><th>Turnover</th><th>Drop</th><th>Assist</th><th>Goal</th></tr></thead><tbody>`;
+  sortedIds.forEach(id => {
+    const p = state.players.find(p => p.id === id);
+    const s = pointStats[id];
+    html += `<tr>
+      <td>${esc(p.name)}</td>
+      <td><input type="checkbox" class="chk" ${s.pull ? 'checked' : ''} onchange="setPull('${id}',this.checked)" /></td>
+      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','defense',-1)">&minus;</button><span class="cnt-val">${s.defense}</span><button class="cnt-btn" onclick="adj('${id}','defense',1)">+</button></div></td>
+      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','turnover',-1)">&minus;</button><span class="cnt-val">${s.turnover}</span><button class="cnt-btn" onclick="adj('${id}','turnover',1)">+</button></div></td>
+      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','drop',-1)">&minus;</button><span class="cnt-val">${s.drop}</span><button class="cnt-btn" onclick="adj('${id}','drop',1)">+</button></div></td>
+      <td><input type="checkbox" class="chk" ${s.assist ? 'checked' : ''} onchange="setAssist('${id}',this.checked)" /></td>
+      <td><button class="goal-btn" onclick="playerGoal('${id}')">Goal</button></td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function setPull(id, checked) {
+  // only one player can have pull
+  lineupPlayerIds.forEach(pid => { pointStats[pid].pull = false; });
+  if (checked) pointStats[id].pull = true;
+  renderPointTable();
+}
+
+function setAssist(id, checked) {
+  // only one player can have assist
+  lineupPlayerIds.forEach(pid => { pointStats[pid].assist = false; });
+  if (checked) pointStats[id].assist = true;
+  renderPointTable();
+}
+
+function editLineup() {
+  // go back to roster screen, keep current lineup but allow changes
+  showBeforePoint();
+}
+
+function adj(id, stat, d) {
+  pointStats[id][stat] = Math.max(0, pointStats[id][stat] + d);
+  renderPointTable();
+}
+
+function playerGoal(id) {
+  pointStats[id].goal = true;
+  endPoint(true);
+}
+
+function otherTeamScored() { endPoint(false); }
+
+function endPoint(weScored) {
+  const g = state.games.find(g => g.id === currentGameId);
+  if (weScored) g.us++; else g.them++;
+  const score = g.us + '-' + g.them;
+
+  lineupPlayerIds.forEach(pid => {
+    const s = pointStats[pid];
+    state.pointLog.push({
+      gameId: currentGameId,
+      gameName: g.name,
+      score,
+      playerId: pid,
+      playerName: state.players.find(p => p.id === pid).name,
+      od: currentOD,
+      pull: s.pull ? 1 : 0,
+      defense: s.defense,
+      turnover: s.turnover,
+      drop: s.drop,
+      assist: s.assist ? 1 : 0,
+      goal: s.goal ? 1 : 0,
+      weScored
+    });
+  });
+
+  save();
+  // reset for next point
+  pointStats = {};
+  currentOD = weScored ? 'D' : 'O';
+  lineupPlayerIds = [];
+  showBeforePoint();
+}
+
+// ─── STATS ─────────────────────────────────────────────
+let statsSortCol = 'points';
+let statsSortDir = -1;
+
+function showStats(gameId) {
+  currentGameId = gameId;
+  statsSortCol = 'points';
+  statsSortDir = -1;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-stats').classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  if (gameId) {
+    const g = state.games.find(g => g.id === gameId);
+    document.getElementById('stats-title').textContent = 'Stats: ' + g.name;
+  } else {
+    document.getElementById('stats-title').textContent = 'Overall Stats (All Games)';
+  }
+  const csvBar = document.getElementById('stats-csv-bar');
+  if (gameId) {
+    csvBar.innerHTML = '<button class="btn-outline btn-small" onclick="exportGameCSV()">Export Game CSV</button>';
+  } else {
+    csvBar.innerHTML = '<button class="btn-outline btn-small" onclick="exportAllGamesCSV()">Download All Game Data (CSV)</button>';
+  }
+  renderStats(gameId);
+}
+
+function renderStats(gameId) {
+  const logs = gameId ? state.pointLog.filter(r => r.gameId === gameId) : state.pointLog;
+  // aggregate per player
+  const agg = {};
+  logs.forEach(r => {
+    if (!agg[r.playerId]) agg[r.playerId] = { name: r.playerName, points: 0, pulls: 0, defenses: 0, turnovers: 0, drops: 0, assists: 0, goals: 0 };
+    const a = agg[r.playerId];
+    // count distinct points: group by score
+    a._scores = a._scores || new Set();
+    a._scores.add(r.score);
+    a.pulls += r.pull;
+    a.defenses += r.defense;
+    a.turnovers += r.turnover;
+    a.drops += r.drop;
+    a.assists += r.assist;
+    a.goals += r.goal;
+  });
+  let rows = Object.values(agg).map(a => {
+    a.points = a._scores ? a._scores.size : 0;
+    a.total = a.defenses - a.turnovers - a.drops + a.assists + a.goals;
+    return a;
+  });
+
+  rows.sort((a, b) => {
+    const va = a[statsSortCol], vb = b[statsSortCol];
+    if (typeof va === 'string') return statsSortDir * va.localeCompare(vb);
+    return statsSortDir * (va - vb);
+  });
+
+  const cols = [
+    ['name','Player'],['points','Points'],['pulls','Pulls'],['defenses','Defenses'],['turnovers','Turnovers'],['drops','Drops'],['assists','Assists'],['goals','Goals'],['total','Total']
+  ];
+
+  let html = '<thead><tr>' + cols.map(([k,l]) => `<th onclick="sortStats('${k}')">${l}${statsSortCol===k?(statsSortDir===-1?' &#9660;':' &#9650;'):''}</th>`).join('') + '</tr></thead><tbody>';
+  if (!rows.length) { html += '<tr><td colspan="9" class="empty">No data yet</td></tr>'; }
+  rows.forEach(r => {
+    html += `<tr><td>${esc(r.name)}</td><td>${r.points}</td><td>${r.pulls}</td><td>${r.defenses}</td><td>${r.turnovers}</td><td>${r.drops}</td><td>${r.assists}</td><td>${r.goals}</td><td style="font-weight:600">${r.total}</td></tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('stats-table').innerHTML = html;
+}
+
+function sortStats(col) {
+  if (statsSortCol === col) statsSortDir *= -1;
+  else { statsSortCol = col; statsSortDir = col === 'name' ? 1 : -1; }
+  renderStats(currentGameId);
+}
+
+// ─── CSV EXPORT / IMPORT ───────────────────────────────
+function exportCSV() {
+  let csv = 'type,id,name,gender,active,date,us,them,gameId,gameName,score,playerId,playerName,od,pull,defense,turnover,drop,assist,goal,weScored\n';
+  state.players.forEach(p => {
+    csv += `player,${p.id},${csvQ(p.name)},${p.gender},${p.active ? 1 : 0},,,,,,,,,,,,,,,,\n`;
+  });
+  state.games.forEach(g => {
+    csv += `game,${g.id},,,,${g.date},${g.us},${g.them},,,,,,,,,,,,,\n`;
+  });
+  state.pointLog.forEach(r => {
+    csv += `log,,,,,,,,,${csvQ(r.gameName)},${r.score},${r.playerId},${csvQ(r.playerName)},${r.od},${r.pull},${r.defense},${r.turnover},${r.drop},${r.assist},${r.goal},${r.weScored ? 1 : 0}\n`;
+  });
+  // also store gameId in log rows
+  csv = csv.replace(/^(log,,,,,,,),/gm, (match) => match); // noop placeholder
+  // redo log rows properly
+  csv = 'type,id,name,gender,active,date,us,them,gameId,gameName,score,playerId,playerName,od,pull,defense,turnover,drop,assist,goal,weScored\n';
+  state.players.forEach(p => {
+    csv += ['player',p.id,csvQ(p.name),p.gender,p.active?1:0,'','','','','','','','','','','','','','','',''].join(',') + '\n';
+  });
+  state.games.forEach(g => {
+    csv += ['game',g.id,csvQ(g.name),'','',g.date,g.us,g.them,'','','','','','','','','','','','',''].join(',') + '\n';
+  });
+  state.pointLog.forEach(r => {
+    csv += ['log','','','','','','','',r.gameId,csvQ(r.gameName),r.score,r.playerId,csvQ(r.playerName),r.od,r.pull,r.defense,r.turnover,r.drop,r.assist,r.goal,r.weScored?1:0].join(',') + '\n';
+  });
+  download('ultilytics_export.csv', csv);
+}
+
+function exportGameCSV() {
+  const g = state.games.find(g => g.id === currentGameId);
+  const logs = state.pointLog.filter(r => r.gameId === currentGameId);
+  let csv = 'gameName,score,playerName,od,pull,defense,turnover,drop,assist,goal\n';
+  logs.forEach(r => {
+    csv += [csvQ(r.gameName),r.score,csvQ(r.playerName),r.od,r.pull,r.defense,r.turnover,r.drop,r.assist,r.goal].join(',') + '\n';
+  });
+  download(`ultilytics_${g.name.replace(/\s+/g,'_')}.csv`, csv);
+}
+
+function exportAllGamesCSV() {
+  let csv = 'gameName,gameDate,score,playerName,od,pull,defense,turnover,drop,assist,goal\n';
+  state.pointLog.forEach(r => {
+    const g = state.games.find(g => g.id === r.gameId);
+    const date = g ? g.date : '';
+    csv += [csvQ(r.gameName),date,r.score,csvQ(r.playerName),r.od,r.pull,r.defense,r.turnover,r.drop,r.assist,r.goal].join(',') + '\n';
+  });
+  download('ultilytics_all_games.csv', csv);
+}
+
+function csvQ(s) { return s.includes(',') || s.includes('"') ? '"' + s.replace(/"/g,'""') + '"' : s; }
+
+function download(name, content) {
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(content);
+  a.download = name;
+  a.click();
+}
+
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return;
+    const newState = defaultState();
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCSVLine(lines[i]);
+      const type = cols[0];
+      if (type === 'player') {
+        newState.players.push({ id: cols[1], name: cols[2], gender: cols[3], active: cols[4] === '1' });
+      } else if (type === 'game') {
+        newState.games.push({ id: cols[1], name: cols[2], date: cols[5], us: parseInt(cols[6])||0, them: parseInt(cols[7])||0 });
+      } else if (type === 'log') {
+        newState.pointLog.push({
+          gameId: cols[8], gameName: cols[9], score: cols[10], playerId: cols[11], playerName: cols[12],
+          od: cols[13], pull: parseInt(cols[14])||0, defense: parseInt(cols[15])||0, turnover: parseInt(cols[16])||0,
+          drop: parseInt(cols[17])||0, assist: parseInt(cols[18])||0, goal: parseInt(cols[19])||0, weScored: cols[20]==='1'
+        });
+      }
+    }
+    state = newState;
+    save();
+    showScreen('team');
+    alert('Import complete: ' + state.players.length + ' players, ' + state.games.length + ' games loaded.');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function parseCSVLine(line) {
+  const result = []; let cur = ''; let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+      else if (c === '"') inQuotes = false;
+      else cur += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { result.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ─── UTILS ─────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ─── INIT ──────────────────────────────────────────────
+document.getElementById('game-date').value = new Date().toISOString().slice(0, 10);
+showScreen('team');
+</script>
+</body>
+</html>
