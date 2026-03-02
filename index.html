@@ -152,6 +152,26 @@
   .mat-diag .mat-p  { font-size: 12px; font-weight: 600; }
   .mat-diag .mat-lbl { font-size: 10px; }
 
+  /* PLAYER DETAIL */
+  .pd-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .pd-avatar { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .pd-avatar.male { background: #3a6f96; }
+  .pd-avatar.female { background: #a84444; }
+  .pd-name { font-size: 20px; font-weight: 700; }
+  .pd-gender { font-size: 12px; color: var(--text2); }
+  .pd-layout { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .pd-stats { flex: 1; min-width: 220px; }
+  .pd-radar { flex: 1; min-width: 260px; display: flex; justify-content: center; }
+  .pd-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .pd-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  .pd-table .pd-label { text-align: right; color: var(--text2); font-weight: 500; }
+  .pd-table .pd-val { text-align: left; font-weight: 700; min-width: 40px; }
+  .pd-table .pd-weight { font-size: 12px; font-weight: 600; min-width: 24px; text-align: right; }
+  .pd-table .pd-weight.pos { color: var(--green); }
+  .pd-table .pd-weight.neg { color: var(--red); }
+  .pd-table .pd-total td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
+  .pd-section { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; padding: 10px 8px 4px; }
+
   /* CSV BAR */
   .csv-bar { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
   .back-btn { margin-bottom: 12px; }
@@ -189,6 +209,16 @@
     <button class="btn-outline btn-small" onclick="exportCSV()">Export All Data (CSV)</button>
     <button class="btn-outline btn-small" onclick="document.getElementById('csv-import').click()">Import CSV</button>
     <input type="file" id="csv-import" accept=".csv" style="display:none" onchange="importCSV(event)" />
+  </div>
+</div>
+
+<!-- PLAYER DETAIL -->
+<div class="screen" id="screen-player-detail">
+  <button class="btn-outline btn-small back-btn" onclick="showScreen('team')">Back to team</button>
+  <div id="pd-header"></div>
+  <div class="pd-layout">
+    <div class="pd-stats" id="pd-stats"></div>
+    <div class="pd-radar" id="pd-radar"></div>
   </div>
 </div>
 
@@ -308,11 +338,161 @@ function renderPlayers() {
   list.innerHTML = sorted.map(p => `
     <div class="card player-item">
       <div class="info">
-        <span>${esc(p.name)}</span>
+        <span style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--border)" onclick="event.stopPropagation();showPlayerDetail('${p.id}')">${esc(p.name)}</span>
         <span class="gender${p.gender === 'F' ? ' female' : ''}">${p.gender}</span>
       </div>
       <button class="toggle ${p.active ? 'on' : ''}" onclick="toggleActive('${p.id}')"></button>
     </div>`).join('');
+}
+
+// ─── PLAYER DETAIL ─────────────────────────────────────
+function showPlayerDetail(playerId) {
+  const player = state.players.find(p => p.id === playerId);
+  if (!player) return;
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-player-detail').classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-team').classList.add('active');
+
+  // header
+  const initials = player.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const gc = player.gender === 'F' ? 'female' : 'male';
+  document.getElementById('pd-header').innerHTML = `
+    <div class="pd-header">
+      <div class="pd-avatar ${gc}">${initials}</div>
+      <div>
+        <div class="pd-name">${esc(player.name)}</div>
+        <div class="pd-gender">${player.gender === 'F' ? 'Female' : 'Male'}</div>
+      </div>
+    </div>`;
+
+  // compute stats from pointLog
+  const logs = state.pointLog.filter(r => r.playerId === playerId);
+  const points = new Map();
+  logs.forEach(r => {
+    const key = r.gameId + ':' + r.score;
+    if (!points.has(key)) points.set(key, { od: r.od, won: r.weScored });
+  });
+
+  const games = new Set(logs.map(r => r.gameId)).size;
+  const totalPoints = points.size;
+  const oPoints = [...points.values()].filter(p => p.od === 'O').length;
+  const dPoints = [...points.values()].filter(p => p.od === 'D').length;
+
+  let goals = 0, assists = 0, pulls = 0, defenses = 0, turnovers = 0, drops = 0;
+  logs.forEach(r => {
+    goals += r.goal; assists += r.assist; pulls += r.pull;
+    defenses += r.defense; turnovers += r.turnover; drops += r.drop;
+  });
+  const total = defenses - turnovers - drops + assists + goals;
+
+  // stats table
+  document.getElementById('pd-stats').innerHTML = `
+    <table class="pd-table">
+      <tr><td class="pd-section" colspan="3">Overview</td></tr>
+      <tr><td class="pd-label">Games Played</td><td class="pd-val" colspan="2">${games}</td></tr>
+      <tr><td class="pd-label">Points Played</td><td class="pd-val" colspan="2">${totalPoints}</td></tr>
+      <tr><td class="pd-label">Offense Points</td><td class="pd-val" colspan="2">${oPoints}</td></tr>
+      <tr><td class="pd-label">Defense Points</td><td class="pd-val" colspan="2">${dPoints}</td></tr>
+      <tr><td class="pd-section" colspan="3">Performance</td></tr>
+      <tr><td class="pd-weight pos">+1</td><td class="pd-label">Goals</td><td class="pd-val">${goals}</td></tr>
+      <tr><td class="pd-weight pos">+1</td><td class="pd-label">Assists</td><td class="pd-val">${assists}</td></tr>
+      <tr><td class="pd-weight pos">+1</td><td class="pd-label">Defenses</td><td class="pd-val">${defenses}</td></tr>
+      <tr><td class="pd-weight"></td><td class="pd-label">Pulls</td><td class="pd-val">${pulls}</td></tr>
+      <tr><td class="pd-weight neg">&minus;1</td><td class="pd-label">Turnovers</td><td class="pd-val">${turnovers}</td></tr>
+      <tr><td class="pd-weight neg">&minus;1</td><td class="pd-label">Drops</td><td class="pd-val">${drops}</td></tr>
+      <tr class="pd-total"><td class="pd-weight">=</td><td class="pd-label">Total</td><td class="pd-val" style="color:${total >= 0 ? 'var(--green)' : 'var(--red)'}">${total >= 0 ? '+' : ''}${total}</td></tr>
+    </table>`;
+
+  // radar chart: compare player vs team average
+  renderRadarChart(playerId);
+}
+
+function renderRadarChart(playerId) {
+  const container = document.getElementById('pd-radar');
+  const allLogs = state.pointLog;
+  if (allLogs.length < 1) { container.innerHTML = '<div class="empty">No data yet</div>'; return; }
+
+  // compute per-player totals for all players with data
+  const pAgg = {};
+  allLogs.forEach(r => {
+    if (!pAgg[r.playerId]) pAgg[r.playerId] = { goals:0, assists:0, defenses:0, pulls:0, turnovers:0, drops:0, points:0, _pts: new Set() };
+    const a = pAgg[r.playerId];
+    a.goals += r.goal; a.assists += r.assist; a.defenses += r.defense;
+    a.pulls += r.pull; a.turnovers += r.turnover; a.drops += r.drop;
+    a._pts.add(r.gameId + ':' + r.score);
+  });
+  Object.values(pAgg).forEach(a => { a.points = a._pts.size; });
+
+  const labels = ['Goals', 'Assists', 'Defenses', 'Pulls', 'Turnovers', 'Drops'];
+  const keys   = ['goals', 'assists', 'defenses', 'pulls', 'turnovers', 'drops'];
+
+  // normalize per point played
+  const perPt = (a, k) => a.points ? a[k] / a.points : 0;
+
+  // team averages (mean of all players' per-point rates)
+  const allPlayers = Object.values(pAgg);
+  const teamAvg = keys.map(k => {
+    const sum = allPlayers.reduce((s, a) => s + perPt(a, k), 0);
+    return allPlayers.length ? sum / allPlayers.length : 0;
+  });
+
+  const me = pAgg[playerId];
+  const myVals = me ? keys.map(k => perPt(me, k)) : keys.map(() => 0);
+
+  // max across all players for scaling
+  const maxVals = keys.map(k => Math.max(...allPlayers.map(a => perPt(a, k)), 0.001));
+
+  // normalize to 0..1
+  const normMe  = myVals.map((v, i) => v / maxVals[i]);
+  const normAvg = teamAvg.map((v, i) => v / maxVals[i]);
+
+  // draw SVG
+  const w = 280, h = 280, cx = w/2, cy = h/2, R = 100;
+  const n = labels.length;
+  const angle = (i) => (Math.PI * 2 * i / n) - Math.PI / 2;
+  const pt = (a, scale) => ({ x: cx + R * scale * Math.cos(a), y: cy + R * scale * Math.sin(a) });
+  const poly = (vals) => vals.map((v, i) => { const p = pt(angle(i), v); return p.x + ',' + p.y; }).join(' ');
+
+  let svg = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="max-width:100%">`;
+
+  // grid
+  [0.25, 0.5, 0.75, 1.0].forEach(s => {
+    const pts = [];
+    for (let i = 0; i < n; i++) { const p = pt(angle(i), s); pts.push(p.x + ',' + p.y); }
+    svg += `<polygon points="${pts.join(' ')}" fill="none" stroke="var(--border)" stroke-width="1"/>`;
+  });
+
+  // axes + labels
+  for (let i = 0; i < n; i++) {
+    const p1 = pt(angle(i), 1);
+    svg += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="var(--border)" stroke-width="1"/>`;
+    const lp = pt(angle(i), 1.22);
+    svg += `<text x="${lp.x}" y="${lp.y}" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="500" fill="var(--text2)">${labels[i]}</text>`;
+  }
+
+  // team average polygon
+  svg += `<polygon points="${poly(normAvg)}" fill="rgba(180,180,180,0.25)" stroke="#aaa" stroke-width="1.5"/>`;
+
+  // player polygon
+  svg += `<polygon points="${poly(normMe)}" fill="rgba(116,160,192,0.35)" stroke="var(--accent)" stroke-width="2"/>`;
+
+  // dots on player polygon
+  for (let i = 0; i < n; i++) {
+    const p = pt(angle(i), normMe[i]);
+    svg += `<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--accent)"/>`;
+  }
+
+  svg += '</svg>';
+
+  // legend
+  svg += `<div style="display:flex;gap:16px;justify-content:center;font-size:11px;color:var(--text2);margin-top:4px;">
+    <span><span style="display:inline-block;width:12px;height:12px;background:rgba(180,180,180,0.4);border:1px solid #aaa;border-radius:2px;vertical-align:middle;margin-right:3px"></span>Team Avg</span>
+    <span><span style="display:inline-block;width:12px;height:12px;background:rgba(116,160,192,0.5);border:1px solid var(--accent);border-radius:2px;vertical-align:middle;margin-right:3px"></span>${esc(state.players.find(p => p.id === playerId)?.name || '')}</span>
+  </div>`;
+
+  container.innerHTML = svg;
 }
 
 // ─── GAMES ─────────────────────────────────────────────
