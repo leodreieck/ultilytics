@@ -40,7 +40,7 @@
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; }
 
   /* FORMS */
-  .form-row { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .form-row { display: flex; gap: 8px; margin-bottom: 16px; align-items: stretch; }
   .form-row input, .form-row select { flex: 1; }
   .btn-primary { background: var(--accent); color: #fff; font-weight: 600; }
   .btn-green { background: var(--green); color: #fff; font-weight: 600; }
@@ -52,6 +52,7 @@
   .player-item { display: flex; align-items: center; justify-content: space-between; }
   .player-item .info { display: flex; align-items: center; gap: 8px; }
   .player-item .gender { font-size: 11px; background: var(--surface2); padding: 2px 6px; border-radius: 4px; color: var(--text2); }
+  .player-item .gender.female { background: #fad4d4; color: #a84444; }
   .toggle { width: 40px; height: 22px; border-radius: 11px; background: var(--surface2); position: relative; cursor: pointer; transition: background .2s; border: none; padding: 0; }
   .toggle.on { background: var(--green); }
   .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: left .2s; }
@@ -270,7 +271,7 @@ function renderPlayers() {
     <div class="card player-item">
       <div class="info">
         <span>${esc(p.name)}</span>
-        <span class="gender">${p.gender}</span>
+        <span class="gender${p.gender === 'F' ? ' female' : ''}">${p.gender}</span>
       </div>
       <button class="toggle ${p.active ? 'on' : ''}" onclick="toggleActive('${p.id}')"></button>
     </div>`).join('');
