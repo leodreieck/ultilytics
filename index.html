@@ -185,7 +185,7 @@
 <body>
 
 <nav>
-  <span class="logo">Ultilytics</span>
+  <span class="logo" style="cursor:pointer" onclick="showScreen('team')">Ultilytics</span>
   <button onclick="showScreen('team')" id="nav-team">Team</button>
   <button onclick="showScreen('games')" id="nav-games">Games</button>
   <button onclick="showStats(null)" id="nav-stats">Stats</button>
@@ -828,7 +828,7 @@ function renderStats(gameId) {
     a.assists += r.assist;
     a.goals += r.goal;
   });
-  let rows = Object.values(agg).map(a => {
+  let rows = Object.entries(agg).map(([pid, a]) => { a.pid = pid; return a; }).map(a => {
     a.points = a._scores ? a._scores.size : 0;
     a.dPoints = a._dScores ? a._dScores.size : 0;
     a.oPoints = a._oScores ? a._oScores.size : 0;
@@ -853,7 +853,7 @@ function renderStats(gameId) {
   let html = '<thead><tr>' + cols.map(([k,l]) => `<th onclick="sortStats('${k}')">${l}${statsSortCol===k?(statsSortDir===-1?' &#9660;':' &#9650;'):''}</th>`).join('') + '</tr></thead><tbody>';
   if (!rows.length) { html += '<tr><td colspan="' + cols.length + '" class="empty">No data yet</td></tr>'; }
   rows.forEach(r => {
-    let cells = `<td>${esc(r.name)}</td>`;
+    let cells = `<td><span style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--border)" onclick="showPlayerDetail('${r.pid}')">${esc(r.name)}</span></td>`;
     if (isOverall) cells += `<td>${r.games}</td>`;
     cells += `<td>${r.points}</td><td>${r.dPoints}</td><td>${r.oPoints}</td><td>${r.pulls}</td><td>${r.defenses}</td><td>${r.turnovers}</td><td>${r.drops}</td><td>${r.assists}</td><td>${r.goals}</td><td style="font-weight:600">${r.total}</td>`;
     html += `<tr>${cells}</tr>`;
