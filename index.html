@@ -64,6 +64,10 @@
   .game-item { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
   .game-item:hover { border-color: var(--accent); }
   .game-date { font-size: 12px; color: var(--text2); }
+  .division-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+  .division-badge.mixed   { background: #ddeaf5; color: #3a6f96; }
+  .division-badge.womens  { background: #fad4d4; color: #a84444; }
+  .division-badge.open    { background: #d6f0e0; color: #2e7d52; }
 
   /* SCORE BAR */
   .score-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; text-align: center; margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 20px; }
@@ -82,7 +86,11 @@
   .player-cards { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
   .pcard { padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; user-select: none; transition: all .15s; border: none; }
   .pcard.available { background: var(--surface2); color: var(--text); }
+  .pcard.available.male   { background: #ddeaf5; color: #3a6f96; }
+  .pcard.available.female { background: #fad4d4; color: #a84444; }
   .pcard.selected { background: var(--accent); color: #fff; }
+  .pcard.selected.male   { background: #3a6f96; }
+  .pcard.selected.female { background: #a84444; }
   .pcard.greyed { background: var(--surface); color: var(--text2); opacity: .4; }
 
   /* POINT TRACKING TABLE */
@@ -167,6 +175,11 @@
   <div class="form-row">
     <input id="game-name" placeholder="Game name" />
     <input id="game-date" type="date" />
+    <select id="game-division">
+      <option value="Mixed">Mixed</option>
+      <option value="Women's">Women's</option>
+      <option value="Open">Open</option>
+    </select>
     <button class="btn-primary" onclick="addGame()">New</button>
   </div>
   <div id="game-list"></div>
@@ -284,7 +297,8 @@ function addGame() {
   const name = nameEl.value.trim();
   if (!name) return;
   const date = dateEl.value || new Date().toISOString().slice(0, 10);
-  state.games.push({ id: uid(), name, date, us: 0, them: 0 });
+  const division = document.getElementById('game-division').value;
+  state.games.push({ id: uid(), name, date, division, us: 0, them: 0 });
   nameEl.value = ''; dateEl.value = '';
   save(); renderGames();
 }
@@ -295,7 +309,7 @@ function renderGames() {
   list.innerHTML = state.games.slice().reverse().map(g => `
     <div class="card game-item" onclick="enterGame('${g.id}')">
       <div>
-        <div>${esc(g.name)}</div>
+        <div style="display:flex;align-items:center;gap:6px;">${esc(g.name)}${divisionBadge(g.division)}</div>
         <div class="game-date">${g.date}</div>
       </div>
       <div style="display:flex;gap:12px;align-items:center;">
@@ -361,13 +375,15 @@ function renderLineup() {
   } else {
     zone.innerHTML = sortedLineup.map(id => {
       const p = state.players.find(p => p.id === id);
-      return `<button class="pcard selected" onclick="removeFromLineup('${id}')">${esc(p.name)}</button>`;
+      const g = p.gender === 'F' ? 'female' : 'male';
+      return `<button class="pcard selected ${g}" onclick="removeFromLineup('${id}')">${esc(p.name)}</button>`;
     }).join('');
   }
 
   pool.innerHTML = active.map(p => {
     const inLineup = lineupPlayerIds.includes(p.id);
-    return `<button class="pcard ${inLineup ? 'greyed' : 'available'}" onclick="${inLineup ? '' : "addToLineup('" + p.id + "')"}">${esc(p.name)}</button>`;
+    const g = p.gender === 'F' ? 'female' : 'male';
+    return `<button class="pcard ${inLineup ? 'greyed' : 'available ' + g}" onclick="${inLineup ? '' : "addToLineup('" + p.id + "')"}">${esc(p.name)}</button>`;
   }).join('');
 }
 
@@ -662,12 +678,12 @@ function exportCSV() {
   // also store gameId in log rows
   csv = csv.replace(/^(log,,,,,,,),/gm, (match) => match); // noop placeholder
   // redo log rows properly
-  csv = 'type,id,name,gender,active,date,us,them,gameId,gameName,score,playerId,playerName,od,pull,defense,turnover,drop,assist,goal,weScored\n';
+  csv = 'type,id,name,gender,active,date,us,them,gameId,gameName,score,playerId,playerName,od,pull,defense,turnover,drop,assist,goal,weScored,division\n';
   state.players.forEach(p => {
     csv += ['player',p.id,csvQ(p.name),p.gender,p.active?1:0,'','','','','','','','','','','','','','','',''].join(',') + '\n';
   });
   state.games.forEach(g => {
-    csv += ['game',g.id,csvQ(g.name),'','',g.date,g.us,g.them,'','','','','','','','','','','','',''].join(',') + '\n';
+    csv += ['game',g.id,csvQ(g.name),'','',g.date,g.us,g.them,'','','','','','','','','','','','','',csvQ(g.division||'')].join(',') + '\n';
   });
   state.pointLog.forEach(r => {
     csv += ['log','','','','','','','',r.gameId,csvQ(r.gameName),r.score,r.playerId,csvQ(r.playerName),r.od,r.pull,r.defense,r.turnover,r.drop,r.assist,r.goal,r.weScored?1:0].join(',') + '\n';
@@ -718,7 +734,7 @@ function importCSV(event) {
       if (type === 'player') {
         newState.players.push({ id: cols[1], name: cols[2], gender: cols[3], active: cols[4] === '1' });
       } else if (type === 'game') {
-        newState.games.push({ id: cols[1], name: cols[2], date: cols[5], us: parseInt(cols[6])||0, them: parseInt(cols[7])||0 });
+        newState.games.push({ id: cols[1], name: cols[2], date: cols[5], us: parseInt(cols[6])||0, them: parseInt(cols[7])||0, division: cols[21]||'' });
       } else if (type === 'log') {
         newState.pointLog.push({
           gameId: cols[8], gameName: cols[9], score: cols[10], playerId: cols[11], playerName: cols[12],
@@ -757,6 +773,11 @@ function parseCSVLine(line) {
 // ─── UTILS ─────────────────────────────────────────────
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function divisionBadge(div) {
+  if (!div) return '';
+  const cls = div === "Women's" ? 'womens' : div.toLowerCase();
+  return `<span class="division-badge ${cls}">${esc(div)}</span>`;
+}
 
 // ─── INIT ──────────────────────────────────────────────
 document.getElementById('game-date').value = new Date().toISOString().slice(0, 10);
