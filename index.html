@@ -136,6 +136,7 @@
   <span class="logo">Ultilytics</span>
   <button onclick="showScreen('team')" id="nav-team">Team</button>
   <button onclick="showScreen('games')" id="nav-games">Games</button>
+  <button onclick="showStats(null)" id="nav-stats">Stats</button>
 </nav>
 
 <!-- TEAM SCREEN -->
@@ -168,7 +169,6 @@
     <button class="btn-primary" onclick="addGame()">New</button>
   </div>
   <div id="game-list"></div>
-  <button class="btn-outline btn-small mt" onclick="showStats(null)" style="width:100%">Overall Stats (All Games)</button>
 </div>
 
 <!-- GAME: BEFORE POINT -->
@@ -500,6 +500,7 @@ function showStats(gameId) {
     document.getElementById('stats-title').textContent = 'Stats: ' + g.name;
   } else {
     document.getElementById('stats-title').textContent = 'Overall Stats (All Games)';
+    document.getElementById('nav-stats').classList.add('active');
   }
   const csvBar = document.getElementById('stats-csv-bar');
   if (gameId) {
@@ -761,9 +762,9 @@ document.getElementById('game-date').value = new Date().toISOString().slice(0, 1
 showScreen('team');
 </script>
 <footer style="text-align:center;padding:24px 16px;font-size:12px;color:var(--text2);border-top:1px solid var(--border);margin-top:32px;">
-  <a href="https://www.leodreieck.de/impressum" style="color:var(--text2);">Impressum</a>
+  <a href="https://www.leodreieck.de/impressum" style="color:var(--text2);">Legal Notice</a>
   &nbsp;·&nbsp;
-  <a href="https://www.leodreieck.de/dsgvo" style="color:var(--text2);">Datenschutz</a>
+  <a href="https://www.leodreieck.de/dsgvo" style="color:var(--text2);">Privacy Policy</a>
 </footer>
 </body>
 </html>
