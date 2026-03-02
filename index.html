@@ -104,6 +104,22 @@
   .stats-table td { text-align: center; padding: 8px 4px; border-top: 1px solid var(--border); }
   .stats-table td:first-child { text-align: left; font-weight: 500; }
 
+  /* TEAM SUMMARY */
+  .team-summary { margin-bottom: 20px; }
+  .team-summary h3 { font-size: 14px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+  .summary-cards { display: flex; gap: 8px; flex-wrap: wrap; }
+  .summary-card { flex: 1; min-width: 140px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .summary-card .sc-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .summary-card .sc-value { font-size: 24px; font-weight: 700; color: var(--accent2); line-height: 1; margin-bottom: 4px; }
+  .summary-card .sc-sub { font-size: 12px; color: var(--text2); }
+  .summary-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 4px; }
+  .summary-table th { text-align: center; padding: 6px 4px; color: var(--text2); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+  .summary-table th:first-child { text-align: left; }
+  .summary-table td { text-align: center; padding: 6px 4px; border-top: 1px solid var(--border); }
+  .summary-table td:first-child { text-align: left; font-weight: 500; }
+  .summary-table tr.total-row td { font-weight: 700; border-top: 2px solid var(--border); }
+  .summary-table tr.avg-row td { color: var(--text2); font-style: italic; }
+
   /* CSV BAR */
   .csv-bar { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
   .back-btn { margin-bottom: 12px; }
@@ -182,6 +198,7 @@
 <div class="screen" id="screen-stats">
   <button class="btn-outline btn-small back-btn" onclick="showScreen('games')">Back to games</button>
   <h2 id="stats-title">Statistics</h2>
+  <div class="team-summary" id="team-summary"></div>
   <table class="stats-table" id="stats-table"></table>
   <div class="csv-bar" id="stats-csv-bar"></div>
 </div>
@@ -493,15 +510,92 @@ function showStats(gameId) {
   renderStats(gameId);
 }
 
+function pct(n, total) { return total ? Math.round(n / total * 100) + '%' : '—'; }
+
+function getPointStats(logs) {
+  const points = new Map();
+  logs.forEach(r => {
+    const key = r.gameId + ':' + r.score;
+    if (!points.has(key)) points.set(key, { od: r.od, weScored: r.weScored });
+  });
+  const vals = [...points.values()];
+  return {
+    played:  vals.length,
+    dPlayed: vals.filter(p => p.od === 'D').length,
+    oPlayed: vals.filter(p => p.od === 'O').length,
+    won:     vals.filter(p => p.weScored).length,
+    dWon:    vals.filter(p => p.od === 'D' && p.weScored).length,
+    oWon:    vals.filter(p => p.od === 'O' && p.weScored).length,
+  };
+}
+
+function renderTeamSummary(gameId) {
+  const el = document.getElementById('team-summary');
+  const logs = gameId ? state.pointLog.filter(r => r.gameId === gameId) : state.pointLog;
+  if (!logs.length) { el.innerHTML = ''; return; }
+
+  if (gameId) {
+    const s = getPointStats(logs);
+    el.innerHTML = `
+      <h3>Team Summary</h3>
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="sc-label">Points Played</div>
+          <div class="sc-value">${s.played}</div>
+          <div class="sc-sub">Defense: ${s.dPlayed} &nbsp;·&nbsp; Offense: ${s.oPlayed}</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-label">Points Won</div>
+          <div class="sc-value">${pct(s.won, s.played)}</div>
+          <div class="sc-sub">Defense: ${pct(s.dWon, s.dPlayed)} &nbsp;·&nbsp; Offense: ${pct(s.oWon, s.oPlayed)}</div>
+        </div>
+      </div>`;
+  } else {
+    const gameIds = [...new Set(logs.map(r => r.gameId))];
+    const rows = gameIds.map(gid => {
+      const g = state.games.find(g => g.id === gid);
+      const s = getPointStats(logs.filter(r => r.gameId === gid));
+      return { name: g ? g.name : '?', ...s };
+    });
+    const n = rows.length;
+    const sum = rows.reduce((acc, r) => {
+      acc.played += r.played; acc.dPlayed += r.dPlayed; acc.oPlayed += r.oPlayed;
+      acc.won += r.won; acc.dWon += r.dWon; acc.oWon += r.oWon;
+      return acc;
+    }, { played:0, dPlayed:0, oPlayed:0, won:0, dWon:0, oWon:0 });
+    const fmt = v => Number.isInteger(v) ? v : v.toFixed(1);
+    const avg = { played: sum.played/n, dPlayed: sum.dPlayed/n, oPlayed: sum.oPlayed/n, won: sum.won/n, dWon: sum.dWon/n, oWon: sum.oWon/n };
+
+    const th = (t) => `<th>${t}</th>`;
+    const td = (v) => `<td>${fmt(v)}</td>`;
+    const tdp = (v, total) => `<td>${pct(v, total)}</td>`;
+    let html = `<h3>Team Summary</h3>
+      <table class="summary-table">
+        <thead><tr>${['Game','Played','D','O','Won %','D Won %','O Won %'].map(th).join('')}</tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr><td>${esc(r.name)}</td>${td(r.played)}${td(r.dPlayed)}${td(r.oPlayed)}${tdp(r.won,r.played)}${tdp(r.dWon,r.dPlayed)}${tdp(r.oWon,r.oPlayed)}</tr>`).join('')}
+          <tr class="total-row"><td>Total</td>${td(sum.played)}${td(sum.dPlayed)}${td(sum.oPlayed)}${tdp(sum.won,sum.played)}${tdp(sum.dWon,sum.dPlayed)}${tdp(sum.oWon,sum.oPlayed)}</tr>
+          <tr class="avg-row"><td>Avg / game</td>${td(avg.played)}${td(avg.dPlayed)}${td(avg.oPlayed)}${tdp(sum.won,sum.played)}${tdp(sum.dWon,sum.dPlayed)}${tdp(sum.oWon,sum.oPlayed)}</tr>
+        </tbody>
+      </table>`;
+    el.innerHTML = html;
+  }
+}
+
 function renderStats(gameId) {
   const logs = gameId ? state.pointLog.filter(r => r.gameId === gameId) : state.pointLog;
   // aggregate per player
   const agg = {};
   logs.forEach(r => {
-    if (!agg[r.playerId]) agg[r.playerId] = { name: r.playerName, points: 0, games: 0, pulls: 0, defenses: 0, turnovers: 0, drops: 0, assists: 0, goals: 0 };
+    if (!agg[r.playerId]) agg[r.playerId] = { name: r.playerName, points: 0, dPoints: 0, oPoints: 0, games: 0, pulls: 0, defenses: 0, turnovers: 0, drops: 0, assists: 0, goals: 0 };
     const a = agg[r.playerId];
+    const key = r.gameId + ':' + r.score;
     a._scores = a._scores || new Set();
-    a._scores.add(r.gameId + ':' + r.score);
+    a._scores.add(key);
+    a._dScores = a._dScores || new Set();
+    if (r.od === 'D') a._dScores.add(key);
+    a._oScores = a._oScores || new Set();
+    if (r.od === 'O') a._oScores.add(key);
     a._games = a._games || new Set();
     a._games.add(r.gameId);
     a.pulls += r.pull;
@@ -513,6 +607,8 @@ function renderStats(gameId) {
   });
   let rows = Object.values(agg).map(a => {
     a.points = a._scores ? a._scores.size : 0;
+    a.dPoints = a._dScores ? a._dScores.size : 0;
+    a.oPoints = a._oScores ? a._oScores.size : 0;
     a.games = a._games ? a._games.size : 0;
     a.total = a.defenses - a.turnovers - a.drops + a.assists + a.goals;
     return a;
@@ -524,17 +620,19 @@ function renderStats(gameId) {
     return statsSortDir * (va - vb);
   });
 
+  renderTeamSummary(gameId);
+
   const isOverall = !gameId;
   const cols = [['name','Player']];
   if (isOverall) cols.push(['games','Games']);
-  cols.push(['points','Points'],['pulls','Pulls'],['defenses','Defenses'],['turnovers','Turnovers'],['drops','Drops'],['assists','Assists'],['goals','Goals'],['total','Total']);
+  cols.push(['points','Points'],['dPoints','D-Points'],['oPoints','O-Points'],['pulls','Pulls'],['defenses','Defenses'],['turnovers','Turnovers'],['drops','Drops'],['assists','Assists'],['goals','Goals'],['total','Total']);
 
   let html = '<thead><tr>' + cols.map(([k,l]) => `<th onclick="sortStats('${k}')">${l}${statsSortCol===k?(statsSortDir===-1?' &#9660;':' &#9650;'):''}</th>`).join('') + '</tr></thead><tbody>';
   if (!rows.length) { html += '<tr><td colspan="' + cols.length + '" class="empty">No data yet</td></tr>'; }
   rows.forEach(r => {
     let cells = `<td>${esc(r.name)}</td>`;
     if (isOverall) cells += `<td>${r.games}</td>`;
-    cells += `<td>${r.points}</td><td>${r.pulls}</td><td>${r.defenses}</td><td>${r.turnovers}</td><td>${r.drops}</td><td>${r.assists}</td><td>${r.goals}</td><td style="font-weight:600">${r.total}</td>`;
+    cells += `<td>${r.points}</td><td>${r.dPoints}</td><td>${r.oPoints}</td><td>${r.pulls}</td><td>${r.defenses}</td><td>${r.turnovers}</td><td>${r.drops}</td><td>${r.assists}</td><td>${r.goals}</td><td style="font-weight:600">${r.total}</td>`;
     html += `<tr>${cells}</tr>`;
   });
   html += '</tbody>';
