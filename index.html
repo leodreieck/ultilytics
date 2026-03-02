@@ -129,6 +129,29 @@
   .summary-table tr.total-row td { font-weight: 700; border-top: 2px solid var(--border); }
   .summary-table tr.avg-row td { color: var(--text2); font-style: italic; }
 
+  /* PLAYER MATRIX */
+  .mat-section { margin-top: 28px; }
+  .mat-section h3 { font-size: 14px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .mat-scroll { overflow-x: auto; }
+  .mat-table { border-collapse: collapse; font-size: 11px; }
+  .mat-table th, .mat-table td { border: 1px solid var(--border); }
+  .mat-col-hdr { writing-mode: vertical-lr; transform: rotate(180deg); padding: 8px 4px; font-weight: 600; font-size: 11px; white-space: nowrap; }
+  .mat-row-hdr { padding: 4px 8px; font-weight: 600; font-size: 11px; white-space: nowrap; background: var(--surface); position: sticky; left: 0; z-index: 1; }
+  .mat-cell { padding: 0; text-align: center; min-width: 72px; vertical-align: middle; }
+  .mat-cell.mat-empty { background: var(--bg); }
+  .mat-cell.mat-diag { outline: 2px solid var(--border); outline-offset: -2px; }
+  .mat-cell-inner { display: grid; grid-template-columns: 1fr 1fr; }
+  .mc-top { grid-column: 1/3; padding: 3px 4px; border-bottom: 1px solid var(--border); }
+  .mc-d   { padding: 3px 4px; border-right: 1px solid var(--border); }
+  .mc-o   { padding: 3px 4px; }
+  .mc-top, .mc-d, .mc-o { text-align: center; }
+  .mat-n  { font-weight: 700; font-size: 12px; line-height: 1.2; }
+  .mat-p  { font-size: 11px; line-height: 1.2; }
+  .mat-lbl { font-size: 9px; color: var(--text2); text-transform: uppercase; letter-spacing: .3px; }
+  .mat-diag .mat-n  { font-size: 13px; }
+  .mat-diag .mat-p  { font-size: 12px; font-weight: 600; }
+  .mat-diag .mat-lbl { font-size: 10px; }
+
   /* CSV BAR */
   .csv-bar { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
   .back-btn { margin-bottom: 12px; }
@@ -214,6 +237,7 @@
   <h2 id="stats-title">Statistics</h2>
   <div class="team-summary" id="team-summary"></div>
   <table class="stats-table" id="stats-table"></table>
+  <div id="player-matrix"></div>
   <div class="csv-bar" id="stats-csv-bar"></div>
 </div>
 
@@ -655,6 +679,113 @@ function renderStats(gameId) {
   });
   html += '</tbody>';
   document.getElementById('stats-table').innerHTML = html;
+  if (!gameId) renderPlayerMatrix();
+  else document.getElementById('player-matrix').innerHTML = '';
+}
+
+function renderPlayerMatrix() {
+  const el = document.getElementById('player-matrix');
+  const logs = state.pointLog;
+  if (logs.length < 2) { el.innerHTML = ''; return; }
+
+  const playerMap = {};
+  logs.forEach(r => { playerMap[r.playerId] = r.playerName; });
+  const players = Object.entries(playerMap)
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if (players.length < 2) { el.innerHTML = ''; return; }
+
+  // group logs into unique points
+  const points = new Map();
+  logs.forEach(r => {
+    const key = r.gameId + ':' + r.score;
+    if (!points.has(key)) points.set(key, { ps: new Set(), od: r.od, won: r.weScored });
+    points.get(key).ps.add(r.playerId);
+  });
+
+  // pairwise co-occurrence
+  const co = {};
+  points.forEach(({ ps, od, won }) => {
+    const arr = [...ps];
+    for (let i = 0; i < arr.length; i++) {
+      for (let j = i + 1; j < arr.length; j++) {
+        const key = arr[i] < arr[j] ? arr[i]+'|'+arr[j] : arr[j]+'|'+arr[i];
+        if (!co[key]) co[key] = { played:0, dPlayed:0, oPlayed:0, won:0, dWon:0, oWon:0 };
+        const s = co[key];
+        s.played++;
+        if (od === 'D') s.dPlayed++; else s.oPlayed++;
+        if (won) { s.won++; if (od === 'D') s.dWon++; else s.oWon++; }
+      }
+    }
+  });
+
+  // per-player stats for diagonal
+  const pOwn = {};
+  points.forEach(({ ps: ids, od, won }) => {
+    ids.forEach(id => {
+      if (!pOwn[id]) pOwn[id] = { played:0, dPlayed:0, oPlayed:0, won:0, dWon:0, oWon:0 };
+      const s = pOwn[id];
+      s.played++;
+      if (od === 'D') s.dPlayed++; else s.oPlayed++;
+      if (won) { s.won++; if (od === 'D') s.dWon++; else s.oWon++; }
+    });
+  });
+
+  const getS = (a, b) => co[a < b ? a+'|'+b : b+'|'+a] || null;
+  const pc = (v, t) => t ? Math.round(v / t * 100) + '%' : '—';
+  const heat = (won, played) => {
+    if (!played) return '';
+    const r = won / played;
+    if (r > 0.5) return `rgba(74,158,120,${((r-0.5)*2*0.55).toFixed(2)})`;
+    if (r < 0.5) return `rgba(192,80,79,${((0.5-r)*2*0.55).toFixed(2)})`;
+    return '';
+  };
+  // render a mini 3-section cell; extraClass optionally added to <td>
+  const triCell = (s, extraClass = '') => {
+    if (!s || !s.played) return `<td class="mat-cell mat-empty${extraClass ? ' '+extraClass : ''}"></td>`;
+    const cTop = heat(s.won, s.played);
+    const cD   = heat(s.dWon, s.dPlayed);
+    const cO   = heat(s.oWon, s.oPlayed);
+    return `<td class="mat-cell${extraClass ? ' '+extraClass : ''}"><div class="mat-cell-inner">
+      <div class="mc-top" style="background:${cTop}">
+        <div class="mat-n">${s.played}</div><div class="mat-p">${pc(s.won,s.played)}</div>
+      </div>
+      <div class="mc-d" style="background:${cD}">
+        <div class="mat-lbl">D</div>
+        <div class="mat-n">${s.dPlayed}</div><div class="mat-p">${pc(s.dWon,s.dPlayed)}</div>
+      </div>
+      <div class="mc-o" style="background:${cO}">
+        <div class="mat-lbl">O</div>
+        <div class="mat-n">${s.oPlayed}</div><div class="mat-p">${pc(s.oWon,s.oPlayed)}</div>
+      </div>
+    </div></td>`;
+  };
+
+  let html = `<div class="mat-section"><h3>Player Matrix</h3>
+    <div class="mat-scroll"><table class="mat-table"><thead><tr><th></th>`;
+  players.forEach(pl => { html += `<th><div class="mat-col-hdr">${esc(pl.name)}</div></th>`; });
+  html += '</tr></thead><tbody>';
+
+  players.forEach((rowP, ri) => {
+    html += `<tr><td class="mat-row-hdr">${esc(rowP.name)}</td>`;
+    players.forEach((colP, ci) => {
+      if (ri === ci) {
+        // diagonal: player's own stats, same 3-section layout
+        const s = pOwn[rowP.id] || { played:0, dPlayed:0, oPlayed:0, won:0, dWon:0, oWon:0 };
+        html += triCell(s, 'mat-diag');
+      } else if (ri > ci) {
+        // lower triangle: show 3-section cell
+        html += triCell(getS(rowP.id, colP.id));
+      } else {
+        // upper triangle: empty
+        html += '<td class="mat-cell mat-empty"></td>';
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
 }
 
 function sortStats(col) {
