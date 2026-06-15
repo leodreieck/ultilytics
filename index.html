@@ -47,6 +47,9 @@
   .btn-red { background: var(--red); color: #fff; font-weight: 600; }
   .btn-small { padding: 4px 10px; font-size: 12px; }
   .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .btn-trash { background: transparent; border: none; padding: 4px; cursor: pointer; color: var(--text2); display: inline-flex; align-items: center; line-height: 0; border-radius: 6px; transition: color .15s, background .15s; }
+  .btn-trash:hover { color: var(--red); background: var(--surface2); }
+  .btn-trash svg { width: 16px; height: 16px; }
 
   /* PLAYER LIST */
   .player-item { display: flex; align-items: center; justify-content: space-between; }
@@ -323,6 +326,17 @@ function toggleActive(id) {
   save(); renderPlayers();
 }
 
+function deletePlayer(id) {
+  const p = state.players.find(p => p.id === id);
+  if (!p) return;
+  const hasData = state.pointLog.some(r => r.playerId === id);
+  let msg = `Delete player "${p.name}"?`;
+  if (hasData) msg += '\n\nTheir previously recorded point data will be kept in stats.';
+  if (!confirm(msg)) return;
+  state.players = state.players.filter(p => p.id !== id);
+  save(); renderPlayers();
+}
+
 function sortPlayers(by) { playerSort = by; renderPlayers(); }
 
 function renderPlayers() {
@@ -337,7 +351,10 @@ function renderPlayers() {
         <span style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--border)" onclick="event.stopPropagation();showPlayerDetail('${p.id}')">${esc(p.name)}</span>
         <span class="gender${p.gender === 'F' ? ' female' : ''}">${p.gender}</span>
       </div>
-      <button class="toggle ${p.active ? 'on' : ''}" onclick="toggleActive('${p.id}')"></button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="toggle ${p.active ? 'on' : ''}" onclick="toggleActive('${p.id}')"></button>
+        <button class="btn-trash" title="Delete player" onclick="event.stopPropagation();deletePlayer('${p.id}')">${trashIcon}</button>
+      </div>
     </div>`).join('');
 }
 
@@ -504,6 +521,18 @@ function addGame() {
   save(); renderGames();
 }
 
+function deleteGame(id) {
+  const g = state.games.find(g => g.id === id);
+  if (!g) return;
+  const pointCount = state.pointLog.filter(r => r.gameId === id).length;
+  let msg = `Delete game "${g.name}"?`;
+  if (pointCount) msg += '\n\nThis permanently deletes the game and all its recorded point data.';
+  if (!confirm(msg)) return;
+  state.games = state.games.filter(g => g.id !== id);
+  state.pointLog = state.pointLog.filter(r => r.gameId !== id);
+  save(); renderGames();
+}
+
 function renderGames() {
   const list = document.getElementById('game-list');
   if (!state.games.length) { list.innerHTML = '<div class="empty">No games yet</div>'; return; }
@@ -516,6 +545,7 @@ function renderGames() {
       <div style="display:flex;gap:12px;align-items:center;">
         <span style="font-weight:600">${g.us} - ${g.them}</span>
         <button class="btn-outline btn-small" onclick="event.stopPropagation();showStats('${g.id}')">Stats</button>
+        <button class="btn-trash" title="Delete game" onclick="event.stopPropagation();deleteGame('${g.id}')">${trashIcon}</button>
       </div>
     </div>`).join('');
 }
@@ -1079,6 +1109,7 @@ function parseCSVLine(line) {
 }
 
 // ─── UTILS ─────────────────────────────────────────────
+const trashIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function divisionBadge(div) {
