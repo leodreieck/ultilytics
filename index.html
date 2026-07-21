@@ -122,11 +122,11 @@
   .point-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .point-table th { text-align: center; padding: 6px 2px; color: var(--text2); font-weight: 500; font-size: 11px; text-transform: uppercase; }
   .point-table th:first-child { text-align: left; }
-  .point-table td { text-align: center; padding: 6px 2px; border-top: 1px solid var(--border); }
+  .point-table td { text-align: center; padding: 11px 2px; border-top: 1px solid var(--border); }
   .point-table td:first-child { text-align: left; font-weight: 500; }
-  .point-table .cnt-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-  .point-table .cnt-btn { width: 42px; height: 28px; border-radius: 5px; font-size: 11px; display: flex; align-items: center; justify-content: center; background: var(--surface2); color: var(--text); border: none; padding: 0; line-height: 1; }
-  .point-table .cnt-val { min-width: 16px; text-align: center; font-size: 16px; font-weight: 600; }
+  .point-table .cnt-cell { display: flex; align-items: center; justify-content: center; gap: 2px; }
+  .point-table .cnt-btn { width: 24px; height: 40px; border-radius: 4px; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--surface2); color: var(--text); border: none; padding: 0; line-height: 1; }
+  .point-table .cnt-val { min-width: 18px; text-align: center; }
   .point-table .chk { width: 24px; height: 24px; accent-color: var(--accent); }
   .goal-btn { background: var(--green); color: #fff; font-weight: 700; padding: 12px 8px; font-size: 13px; border: none; border-radius: 6px; }
 
@@ -277,13 +277,13 @@
 <div class="screen" id="screen-before-point">
   <button class="btn-outline btn-small back-btn" onclick="leaveGame()">Back to games</button>
   <div class="setup-card" id="bp-setup"></div>
+  <div id="bp-half" class="half-bar"></div>
   <div class="score-bar" id="bp-score"></div>
   <div class="point-info" id="bp-info"></div>
   <div class="od-selector">
     <button id="od-offense" onclick="setOD('O')">Offense</button>
     <button id="od-defense" onclick="setOD('D')">Defense</button>
   </div>
-  <div id="bp-half" class="half-bar"></div>
   <div class="lineup-zone" id="lineup-zone"><span class="placeholder">Tap players below to add (max 7)</span></div>
   <div class="player-cards" id="available-players"></div>
   <button class="btn-primary" style="width:100%;padding:14px;font-size:15px;" onclick="startPoint()">Start Point</button>
@@ -803,9 +803,9 @@ function renderPointTable() {
     html += `<tr>
       <td>${esc(p.name)}</td>
       ${showPull ? `<td><input type="checkbox" class="chk" ${s.pull ? 'checked' : ''} onchange="setPull('${id}',this.checked)" /></td>` : ''}
-      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','defense',1)">&#9650;</button><span class="cnt-val">${s.defense}</span><button class="cnt-btn" onclick="adj('${id}','defense',-1)">&#9660;</button></div></td>
-      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','turnover',1)">&#9650;</button><span class="cnt-val">${s.turnover}</span><button class="cnt-btn" onclick="adj('${id}','turnover',-1)">&#9660;</button></div></td>
-      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','drop',1)">&#9650;</button><span class="cnt-val">${s.drop}</span><button class="cnt-btn" onclick="adj('${id}','drop',-1)">&#9660;</button></div></td>
+      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','defense',-1)">&minus;</button><span class="cnt-val">${s.defense}</span><button class="cnt-btn" onclick="adj('${id}','defense',1)">+</button></div></td>
+      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','turnover',-1)">&minus;</button><span class="cnt-val">${s.turnover}</span><button class="cnt-btn" onclick="adj('${id}','turnover',1)">+</button></div></td>
+      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','drop',-1)">&minus;</button><span class="cnt-val">${s.drop}</span><button class="cnt-btn" onclick="adj('${id}','drop',1)">+</button></div></td>
       <td><input type="checkbox" class="chk" ${s.assist ? 'checked' : ''} onchange="setAssist('${id}',this.checked)" /></td>
       <td><button class="goal-btn" onclick="playerGoal('${id}')">Goal</button></td>
     </tr>`;
