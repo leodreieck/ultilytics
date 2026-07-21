@@ -73,24 +73,17 @@
   .division-badge.open    { background: #d6f0e0; color: #2e7d52; }
 
   /* SCORE BAR */
-  .score-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; text-align: center; margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 20px; }
+  .score-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; text-align: center; margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .score-bar .score-row { display: flex; justify-content: center; align-items: center; gap: 20px; }
   .score-bar .score { font-size: 28px; font-weight: 700; }
   .score-bar .dash { font-size: 20px; color: var(--text2); }
   .score-bar .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+  .score-bar .score-info { font-size: 11px; color: var(--text2); letter-spacing: .3px; }
 
   /* OFFENSE/DEFENSE SELECTOR */
   .od-selector { display: flex; gap: 8px; margin-bottom: 16px; }
   .od-selector button { flex: 1; padding: 14px; font-size: 15px; font-weight: 600; border: 2px solid var(--border); background: var(--surface); color: var(--text2); }
   .od-selector button.selected { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
-
-  /* POINT INFO BADGES (f/m · o/d · from l/r) */
-  .point-info { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-  .point-info:empty { display: none; }
-  .pi-badge { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 6px; background: var(--surface2); color: var(--text2); }
-  .pi-badge.male   { background: #ddeaf5; color: #3a6f96; }
-  .pi-badge.female { background: #fad4d4; color: #a84444; }
-  .pi-badge.od     { color: var(--accent2); }
-  .pi-badge.dir    { color: var(--text); }
 
   /* GAME SETUP (flip) CARD */
   .setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; }
@@ -195,7 +188,8 @@
 
   /* CSV BAR */
   .csv-bar { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-  .back-btn { margin-bottom: 12px; }
+  .back-btn { margin-bottom: 12px; background: transparent; color: var(--text2); padding-left: 0; }
+  .back-btn:hover { color: var(--accent); }
 
   /* misc */
   .empty { color: var(--text2); font-size: 14px; text-align: center; padding: 24px 0; }
@@ -249,7 +243,7 @@
 
 <!-- PLAYER DETAIL -->
 <div class="screen" id="screen-player-detail">
-  <button class="btn-outline btn-small back-btn" onclick="showScreen('team')">Back to team</button>
+  <button class="btn-small back-btn" onclick="showScreen('team')">← Back to team</button>
   <div id="pd-header"></div>
   <div class="pd-layout">
     <div class="pd-stats" id="pd-stats"></div>
@@ -275,11 +269,10 @@
 
 <!-- GAME: BEFORE POINT -->
 <div class="screen" id="screen-before-point">
-  <button class="btn-outline btn-small back-btn" onclick="leaveGame()">Back to games</button>
+  <button class="btn-small back-btn" onclick="leaveGame()">← Back to games</button>
   <div class="setup-card" id="bp-setup"></div>
   <div id="bp-half" class="half-bar"></div>
   <div class="score-bar" id="bp-score"></div>
-  <div class="point-info" id="bp-info"></div>
   <div class="od-selector">
     <button id="od-offense" onclick="setOD('O')">Offense</button>
     <button id="od-defense" onclick="setOD('D')">Defense</button>
@@ -292,7 +285,6 @@
 <!-- GAME: DURING POINT -->
 <div class="screen" id="screen-during-point">
   <div class="score-bar" id="dp-score"></div>
-  <div class="point-info" id="dp-info"></div>
   <div style="display:flex;gap:8px;margin-bottom:12px;">
     <button class="btn-red" style="flex:1;padding:12px;font-size:14px;" onclick="otherTeamScored()">Other Team Scored</button>
     <button class="btn-outline" style="padding:12px;font-size:14px;" onclick="editLineup()">Edit Lineup</button>
@@ -302,7 +294,7 @@
 
 <!-- STATS SCREEN -->
 <div class="screen" id="screen-stats">
-  <button class="btn-outline btn-small back-btn" onclick="showScreen('games')">Back to games</button>
+  <button class="btn-small back-btn" onclick="showScreen('games')">← Back to games</button>
   <h2 id="stats-title">Statistics</h2>
   <div class="team-summary" id="team-summary"></div>
   <h3 id="stats-players-header" style="font-size:14px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Players</h3>
@@ -619,7 +611,6 @@ function showBeforePoint() {
   document.getElementById('od-offense').className = currentOD === 'O' ? 'selected' : '';
   document.getElementById('od-defense').className = currentOD === 'D' ? 'selected' : '';
   renderSetup();
-  renderPointInfo('bp-info');
   renderLineup();
 }
 
@@ -627,7 +618,7 @@ function setOD(v) {
   currentOD = v;
   document.getElementById('od-offense').className = v === 'O' ? 'selected' : '';
   document.getElementById('od-defense').className = v === 'D' ? 'selected' : '';
-  renderPointInfo('bp-info');
+  renderScoreBar('bp-score');
 }
 
 // ─── FLIP INFO / HALF-TIME ─────────────────────────────
@@ -659,15 +650,14 @@ function pointInfo() {
   return { od, dir, gender };
 }
 
-function renderPointInfo(elId) {
-  const el = document.getElementById(elId);
-  if (!el) return;
+// Subtle one-line summary shown inside the score bar, e.g. "Male · Offense · from Left".
+function pointInfoText() {
   const info = pointInfo();
-  let html = '';
-  if (info.gender) html += `<span class="pi-badge ${info.gender === 'M' ? 'male' : 'female'}">${info.gender === 'M' ? '♂ Male' : '♀ Female'}</span>`;
-  html += `<span class="pi-badge od">${info.od === 'O' ? 'Offense' : 'Defense'}</span>`;
-  if (info.dir) html += `<span class="pi-badge dir">from ${info.dir === 'L' ? 'Left' : 'Right'}</span>`;
-  el.innerHTML = html;
+  const parts = [];
+  if (info.gender) parts.push(info.gender === 'M' ? 'Male' : 'Female');
+  parts.push(info.od === 'O' ? 'Offense' : 'Defense');
+  if (info.dir) parts.push('from ' + (info.dir === 'L' ? 'Left' : 'Right'));
+  return parts.join(' · ');
 }
 
 let flipOpen = false;
@@ -727,10 +717,14 @@ function setHalf(h) {
 
 function renderScoreBar(elId) {
   const g = state.games.find(g => g.id === currentGameId);
+  const info = pointInfoText();
   document.getElementById(elId).innerHTML = `
-    <div><div class="label">Us</div><div class="score">${g.us}</div></div>
-    <div class="dash">:</div>
-    <div><div class="label">Them</div><div class="score">${g.them}</div></div>`;
+    <div class="score-row">
+      <div><div class="label">Us</div><div class="score">${g.us}</div></div>
+      <div class="dash">:</div>
+      <div><div class="label">Them</div><div class="score">${g.them}</div></div>
+    </div>
+    ${info ? `<div class="score-info">${info}</div>` : ''}`;
 }
 
 function renderLineup() {
@@ -783,7 +777,6 @@ function startPoint() {
   document.getElementById('screen-during-point').classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   renderScoreBar('dp-score');
-  renderPointInfo('dp-info');
   renderPointTable();
 }
 
@@ -1279,7 +1272,6 @@ showScreen('team');
     &nbsp;·&nbsp;
     <a href="mailto:leodreieck.de@gmail.com" style="color:var(--text2);">Feedback</a>
   </span>
-  <a href="https://buymeacoffee.com/ps2ic480wk" target="_blank" rel="noopener" style="font-weight:600;padding:4px 10px;border:1px solid var(--border);border-radius:6px;color:var(--text);text-decoration:none;white-space:nowrap;">☕ Buy me a coffee</a>
 </footer>
 </body>
 </html>
