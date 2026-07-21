@@ -83,6 +83,28 @@
   .od-selector button { flex: 1; padding: 14px; font-size: 15px; font-weight: 600; border: 2px solid var(--border); background: var(--surface); color: var(--text2); }
   .od-selector button.selected { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
 
+  /* POINT INFO BADGES (f/m · o/d · from l/r) */
+  .point-info { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .point-info:empty { display: none; }
+  .pi-badge { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 6px; background: var(--surface2); color: var(--text2); }
+  .pi-badge.male   { background: #ddeaf5; color: #3a6f96; }
+  .pi-badge.female { background: #fad4d4; color: #a84444; }
+  .pi-badge.od     { color: var(--accent2); }
+  .pi-badge.dir    { color: var(--text); }
+
+  /* GAME SETUP (flip) CARD */
+  .setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; }
+  .setup-card:empty { display: none; }
+  .setup-title { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .setup-hide { font-size: 11px; padding: 2px 8px; background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 6px; text-transform: none; letter-spacing: 0; }
+  .half-bar { margin-bottom: 16px; }
+  .setup-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .setup-row:last-child { margin-bottom: 0; }
+  .setup-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; width: 64px; flex-shrink: 0; }
+  .seg { display: flex; gap: 4px; }
+  .seg button { padding: 5px 12px; font-size: 13px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); border-radius: 6px; }
+  .seg button.on { border-color: var(--accent); background: var(--surface2); color: var(--accent2); font-weight: 600; }
+
   /* PLAYER CARDS */
   .lineup-zone { min-height: 56px; border: 2px dashed var(--border); border-radius: var(--radius); padding: 8px; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
   .lineup-zone .placeholder { color: var(--text2); font-size: 13px; width: 100%; text-align: center; }
@@ -254,11 +276,14 @@
 <!-- GAME: BEFORE POINT -->
 <div class="screen" id="screen-before-point">
   <button class="btn-outline btn-small back-btn" onclick="leaveGame()">Back to games</button>
+  <div class="setup-card" id="bp-setup"></div>
   <div class="score-bar" id="bp-score"></div>
+  <div class="point-info" id="bp-info"></div>
   <div class="od-selector">
     <button id="od-offense" onclick="setOD('O')">Offense</button>
     <button id="od-defense" onclick="setOD('D')">Defense</button>
   </div>
+  <div id="bp-half" class="half-bar"></div>
   <div class="lineup-zone" id="lineup-zone"><span class="placeholder">Tap players below to add (max 7)</span></div>
   <div class="player-cards" id="available-players"></div>
   <button class="btn-primary" style="width:100%;padding:14px;font-size:15px;" onclick="startPoint()">Start Point</button>
@@ -267,6 +292,7 @@
 <!-- GAME: DURING POINT -->
 <div class="screen" id="screen-during-point">
   <div class="score-bar" id="dp-score"></div>
+  <div class="point-info" id="dp-info"></div>
   <div style="display:flex;gap:8px;margin-bottom:12px;">
     <button class="btn-red" style="flex:1;padding:12px;font-size:14px;" onclick="otherTeamScored()">Other Team Scored</button>
     <button class="btn-outline" style="padding:12px;font-size:14px;" onclick="editLineup()">Edit Lineup</button>
@@ -530,7 +556,7 @@ function addGame() {
   if (!name) return;
   const date = dateEl.value || new Date().toISOString().slice(0, 10);
   const division = document.getElementById('game-division').value;
-  state.games.push({ id: uid(), name, date, division, us: 0, them: 0 });
+  state.games.push({ id: uid(), name, date, division, us: 0, them: 0, flip: {}, half: 1 });
   nameEl.value = ''; dateEl.value = '';
   save(); renderGames();
 }
@@ -568,14 +594,18 @@ function renderGames() {
 function enterGame(id) {
   currentGameId = id;
   lineupPlayerIds = [];
+  flipOpen = false;
   const g = state.games.find(g => g.id === id);
-  // preselect O/D based on last scorer
+  g.flip = g.flip || {};
+  if (!g.half) g.half = 1;
+  // preselect O/D based on last scorer (or the flip's starting O/D at 0-0)
   const gameLogs = state.pointLog.filter(r => r.gameId === id);
-  if (gameLogs.length === 0) { currentOD = 'O'; }
+  if (gameLogs.length === 0) { currentOD = g.flip.startOD || 'O'; }
   else {
     const lastLog = gameLogs[gameLogs.length - 1];
     currentOD = lastLog.weScored ? 'D' : 'O';
   }
+  save();
   showBeforePoint();
 }
 
@@ -588,6 +618,8 @@ function showBeforePoint() {
   renderScoreBar('bp-score');
   document.getElementById('od-offense').className = currentOD === 'O' ? 'selected' : '';
   document.getElementById('od-defense').className = currentOD === 'D' ? 'selected' : '';
+  renderSetup();
+  renderPointInfo('bp-info');
   renderLineup();
 }
 
@@ -595,6 +627,102 @@ function setOD(v) {
   currentOD = v;
   document.getElementById('od-offense').className = v === 'O' ? 'selected' : '';
   document.getElementById('od-defense').className = v === 'D' ? 'selected' : '';
+  renderPointInfo('bp-info');
+}
+
+// ─── FLIP INFO / HALF-TIME ─────────────────────────────
+function currentGame() { return state.games.find(g => g.id === currentGameId); }
+
+// Derive the current point's gender ratio (Mixed), O/D and field direction.
+// Direction: which side our end zone is on this half (fixed per half, swaps at
+// half-time). Gender: WFDF prescribed-ratio (end-zone) method — the end zone the
+// offense receives in during point 1 keeps the flip gender all game.
+function pointInfo() {
+  const g = currentGame();
+  if (!g) return { od: currentOD, dir: null, gender: null };
+  const flip = g.flip || {};
+  const half = g.half || 1;
+  const od = currentOD;
+
+  let dir = null;
+  if (flip.startDir) dir = half === 1 ? flip.startDir : (flip.startDir === 'L' ? 'R' : 'L');
+
+  let gender = null;
+  if (g.division === 'Mixed' && flip.firstGender && flip.startOD) {
+    // 'A' = our point-1 end zone (physical), 'B' = the other. Ours swaps at half.
+    const offEZp1 = flip.startOD === 'O' ? 'A' : 'B';
+    const ourEZ   = half === 1 ? 'A' : 'B';
+    const theirEZ = ourEZ === 'A' ? 'B' : 'A';
+    const offEZ   = od === 'O' ? ourEZ : theirEZ;
+    gender = offEZ === offEZp1 ? flip.firstGender : (flip.firstGender === 'M' ? 'F' : 'M');
+  }
+  return { od, dir, gender };
+}
+
+function renderPointInfo(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const info = pointInfo();
+  let html = '';
+  if (info.gender) html += `<span class="pi-badge ${info.gender === 'M' ? 'male' : 'female'}">${info.gender === 'M' ? '♂ Male' : '♀ Female'}</span>`;
+  html += `<span class="pi-badge od">${info.od === 'O' ? 'Offense' : 'Defense'}</span>`;
+  if (info.dir) html += `<span class="pi-badge dir">from ${info.dir === 'L' ? 'Left' : 'Right'}</span>`;
+  el.innerHTML = html;
+}
+
+let flipOpen = false;
+
+function renderSetup() {
+  const g = currentGame();
+  if (!g) return;
+  const flip = g.flip || (g.flip = {});
+  const half = g.half || 1;
+  const pointsPlayed = g.us + g.them;
+  // Show the flip card for the first point; afterwards collapse behind a toggle.
+  const expanded = pointsPlayed === 0 || flipOpen;
+
+  const setupEl = document.getElementById('bp-setup');
+  if (!expanded) {
+    setupEl.innerHTML = `<button class="btn-outline btn-small" style="width:100%" onclick="toggleFlip()">Show flip information</button>`;
+  } else {
+    const seg = (field, val, label) => `<button class="${flip[field] === val ? 'on' : ''}" onclick="setFlip('${field}','${val}')">${label}</button>`;
+    let html = `<div class="setup-title"><span>Game Setup (flip result)</span>${pointsPlayed > 0 ? '<button class="setup-hide" onclick="toggleFlip()">Hide</button>' : ''}</div>`;
+    html += `<div class="setup-row"><span class="setup-label">Start</span><div class="seg">${seg('startOD', 'O', 'Offense')}${seg('startOD', 'D', 'Defense')}</div></div>`;
+    html += `<div class="setup-row"><span class="setup-label">From</span><div class="seg">${seg('startDir', 'L', 'Left')}${seg('startDir', 'R', 'Right')}</div></div>`;
+    if (g.division === 'Mixed')
+      html += `<div class="setup-row"><span class="setup-label">1st point</span><div class="seg">${seg('firstGender', 'M', 'Male')}${seg('firstGender', 'F', 'Female')}</div></div>`;
+    setupEl.innerHTML = html;
+  }
+
+  // Half selector — always available, outside the collapsible flip box.
+  document.getElementById('bp-half').innerHTML =
+    `<div class="setup-row"><span class="setup-label">Half</span><div class="seg"><button class="${half === 1 ? 'on' : ''}" onclick="setHalf(1)">1st</button><button class="${half === 2 ? 'on' : ''}" onclick="setHalf(2)">2nd (swap)</button></div></div>`;
+}
+
+function toggleFlip() { flipOpen = !flipOpen; showBeforePoint(); }
+
+function setFlip(field, val) {
+  const g = currentGame();
+  g.flip = g.flip || {};
+  // tapping the active option again clears it
+  g.flip[field] = g.flip[field] === val ? null : val;
+  save();
+  showBeforePoint();
+}
+
+function setHalf(h) {
+  const g = currentGame();
+  const prev = g.half || 1;
+  if (h === prev) return;
+  g.half = h;
+  // Half-time: the team that received to open H1 pulls to open H2, so our
+  // starting O/D inverts — regardless of who scored the last point of H1.
+  if (g.flip && g.flip.startOD) {
+    if (h === 2) currentOD = g.flip.startOD === 'O' ? 'D' : 'O';
+    else currentOD = g.flip.startOD;
+  }
+  save();
+  showBeforePoint();
 }
 
 function renderScoreBar(elId) {
@@ -655,6 +783,7 @@ function startPoint() {
   document.getElementById('screen-during-point').classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   renderScoreBar('dp-score');
+  renderPointInfo('dp-info');
   renderPointTable();
 }
 
@@ -665,13 +794,15 @@ function renderPointTable() {
     const pb = state.players.find(p => p.id === b);
     return pa.name.localeCompare(pb.name);
   });
-  let html = `<thead><tr><th>Player</th><th>Pull</th><th>Defense</th><th>Turnover</th><th>Drop</th><th>Assist</th><th>Goal</th></tr></thead><tbody>`;
+  // On offense the other team pulls to us — nobody on our team pulls, so hide the column.
+  const showPull = currentOD !== 'O';
+  let html = `<thead><tr><th>Player</th>${showPull ? '<th>Pull</th>' : ''}<th>Defense</th><th>Turnover</th><th>Drop</th><th>Assist</th><th>Goal</th></tr></thead><tbody>`;
   sortedIds.forEach(id => {
     const p = state.players.find(p => p.id === id);
     const s = pointStats[id];
     html += `<tr>
       <td>${esc(p.name)}</td>
-      <td><input type="checkbox" class="chk" ${s.pull ? 'checked' : ''} onchange="setPull('${id}',this.checked)" /></td>
+      ${showPull ? `<td><input type="checkbox" class="chk" ${s.pull ? 'checked' : ''} onchange="setPull('${id}',this.checked)" /></td>` : ''}
       <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','defense',1)">&#9650;</button><span class="cnt-val">${s.defense}</span><button class="cnt-btn" onclick="adj('${id}','defense',-1)">&#9660;</button></div></td>
       <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','turnover',1)">&#9650;</button><span class="cnt-val">${s.turnover}</span><button class="cnt-btn" onclick="adj('${id}','turnover',-1)">&#9660;</button></div></td>
       <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','drop',1)">&#9650;</button><span class="cnt-val">${s.drop}</span><button class="cnt-btn" onclick="adj('${id}','drop',-1)">&#9660;</button></div></td>
@@ -728,7 +859,7 @@ function endPoint(weScored) {
       playerId: pid,
       playerName: state.players.find(p => p.id === pid).name,
       od: currentOD,
-      pull: s.pull ? 1 : 0,
+      pull: (currentOD !== 'O' && s.pull) ? 1 : 0,
       defense: s.defense,
       turnover: s.turnover,
       drop: s.drop,
