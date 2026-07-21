@@ -102,11 +102,11 @@
   .point-table th:first-child { text-align: left; }
   .point-table td { text-align: center; padding: 6px 2px; border-top: 1px solid var(--border); }
   .point-table td:first-child { text-align: left; font-weight: 500; }
-  .point-table .cnt-cell { display: flex; align-items: center; justify-content: center; gap: 2px; }
-  .point-table .cnt-btn { width: 22px; height: 22px; border-radius: 4px; font-size: 14px; display: flex; align-items: center; justify-content: center; background: var(--surface2); color: var(--text); border: none; padding: 0; line-height: 1; }
-  .point-table .cnt-val { min-width: 18px; text-align: center; }
-  .point-table .chk { width: 18px; height: 18px; accent-color: var(--accent); }
-  .goal-btn { background: var(--green); color: #fff; font-weight: 700; padding: 4px 10px; font-size: 12px; border: none; border-radius: 4px; }
+  .point-table .cnt-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .point-table .cnt-btn { width: 42px; height: 28px; border-radius: 5px; font-size: 11px; display: flex; align-items: center; justify-content: center; background: var(--surface2); color: var(--text); border: none; padding: 0; line-height: 1; }
+  .point-table .cnt-val { min-width: 16px; text-align: center; font-size: 16px; font-weight: 600; }
+  .point-table .chk { width: 24px; height: 24px; accent-color: var(--accent); }
+  .goal-btn { background: var(--green); color: #fff; font-weight: 700; padding: 12px 8px; font-size: 13px; border: none; border-radius: 6px; }
 
   /* STATS TABLE */
   .stats-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -179,6 +179,20 @@
   .empty { color: var(--text2); font-size: 14px; text-align: center; padding: 24px 0; }
   .mb { margin-bottom: 16px; }
   .mt { margin-top: 16px; }
+
+  /* MOBILE */
+  @media (max-width: 600px) {
+    /* Games form wraps: name on its own row, date + division + button below */
+    .form-row-game { flex-wrap: wrap; }
+    .form-row-game #game-name { flex: 1 1 100%; }
+    .form-row-game #game-date { flex: 1 1 auto; }
+    .form-row-game #game-division { flex: 0 1 auto; }
+    .form-row-game .btn-primary { flex: 0 0 auto; }
+
+    /* Point tracking: reclaim horizontal space for bigger tap targets */
+    #screen-during-point { padding: 12px 6px; }
+    .point-table th, .point-table td { padding-left: 1px; padding-right: 1px; }
+  }
 </style>
 </head>
 <body>
@@ -224,7 +238,7 @@
 <!-- GAMES SCREEN -->
 <div class="screen" id="screen-games">
   <h2>Games</h2>
-  <div class="form-row">
+  <div class="form-row form-row-game">
     <input id="game-name" placeholder="Game name" />
     <input id="game-date" type="date" />
     <select id="game-division">
@@ -658,9 +672,9 @@ function renderPointTable() {
     html += `<tr>
       <td>${esc(p.name)}</td>
       <td><input type="checkbox" class="chk" ${s.pull ? 'checked' : ''} onchange="setPull('${id}',this.checked)" /></td>
-      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','defense',-1)">&minus;</button><span class="cnt-val">${s.defense}</span><button class="cnt-btn" onclick="adj('${id}','defense',1)">+</button></div></td>
-      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','turnover',-1)">&minus;</button><span class="cnt-val">${s.turnover}</span><button class="cnt-btn" onclick="adj('${id}','turnover',1)">+</button></div></td>
-      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','drop',-1)">&minus;</button><span class="cnt-val">${s.drop}</span><button class="cnt-btn" onclick="adj('${id}','drop',1)">+</button></div></td>
+      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','defense',1)">&#9650;</button><span class="cnt-val">${s.defense}</span><button class="cnt-btn" onclick="adj('${id}','defense',-1)">&#9660;</button></div></td>
+      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','turnover',1)">&#9650;</button><span class="cnt-val">${s.turnover}</span><button class="cnt-btn" onclick="adj('${id}','turnover',-1)">&#9660;</button></div></td>
+      <td><div class="cnt-cell"><button class="cnt-btn" onclick="adj('${id}','drop',1)">&#9650;</button><span class="cnt-val">${s.drop}</span><button class="cnt-btn" onclick="adj('${id}','drop',-1)">&#9660;</button></div></td>
       <td><input type="checkbox" class="chk" ${s.assist ? 'checked' : ''} onchange="setAssist('${id}',this.checked)" /></td>
       <td><button class="goal-btn" onclick="playerGoal('${id}')">Goal</button></td>
     </tr>`;
